@@ -1,0 +1,30 @@
+apiVersion: meta.dev.upbound.io/v2alpha1
+kind: Project
+metadata:
+  name: policy-stack
+spec:
+  dependsOn:
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Function
+    package: xpkg.crossplane.io/crossplane-contrib/function-auto-ready
+    version: '>=v0.6.4'
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.crossplane.io/crossplane-contrib/provider-helm
+    version: '>=v1'
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.crossplane.io/crossplane-contrib/provider-kubernetes
+    version: '>=v1'
+  description: Policy stack — Kyverno engine + Policy Reporter dashboard. Cloud-neutral.
+    Other stacks (security, tenant) compose ClusterPolicy/CEL ValidatingPolicy resources
+    against this engine.
+  license: Apache-2.0
+  maintainer: Patrick Lee Scott <pat@patscott.io>
+  readme: |
+    # policy-stack
+
+    Installs Kyverno + Policy Reporter on a target Kubernetes cluster.
+    Engine-only — baseline policy bundle ships in a future iteration.
+  repository: ghcr.io/hops-ops/policy-stack
+  source: github.com/hops-ops/policy-stack

@@ -1,0 +1,59 @@
+# code: language=yaml
+#
+# Helm Release: kyverno
+#
+# Chart:    https://kyverno.github.io/kyverno/ (chart name: kyverno)
+# Upstream: https://github.com/kyverno/kyverno
+#
+# Default values are colima-safe:
+#   - Single replica per controller (HA bumps come from spec.kyverno.values).
+#   - admissionController.failurePolicy: Ignore — Kyverno's own apiserver-wedge
+#     incident (zwindler, Feb 2026) motivates the Ignore default; security
+#     policies that need Fail get a separate webhook config in a later stack
+#     iteration (see tasks/policy-stack-failurepolicy-split in GitKB).
+#
+
+{{- $ky := $state.kyverno }}
+{{- if $ky.enabled }}
+---
+apiVersion: helm.m.crossplane.io/v1beta1
+kind: Release
+metadata:
+  name: {{ $ky.releaseName }}
+  annotations:
+    {{ setResourceNameAnnotation "kyverno" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    chart:
+      name: kyverno
+      repository: https://kyverno.github.io/kyverno/
+      version: {{ $ky.chartVersion | quote }}
+    namespace: {{ $ky.namespace }}
+    wait: true
+    {{- if gt (len $ky.overrideAllValues) 0 }}
+    values:
+      {{- toYaml $ky.overrideAllValues | nindent 6 }}
+    {{- else }}
+    values:
+      admissionController:
+        replicas: 1
+        # Colima-safe default. Production HA: 3 replicas + failurePolicy=Fail
+        # for security policies via a separate webhook config (deferred).
+        failurePolicy: Ignore
+      backgroundController:
+        replicas: 1
+      reportsController:
+        replicas: 1
+      cleanupController:
+        replicas: 1
+      {{- if gt (len $ky.values) 0 }}
+      {{- toYaml $ky.values | nindent 6 }}
+      {{- end }}
+    {{- end }}
+  rollbackLimit: 3
+  providerConfigRef:
+    name: {{ $state.helmProviderConfigRef.name }}
+    kind: {{ $state.helmProviderConfigRef.kind }}
+{{- end }}

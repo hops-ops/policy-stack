@@ -1,0 +1,46 @@
+# code: language=yaml
+#
+# Helm Release: policy-reporter
+#
+# Chart:    https://kyverno.github.io/policy-reporter/ (chart name: policy-reporter)
+# Upstream: https://github.com/kyverno/policy-reporter
+#
+# Default values enable the UI (so the install is immediately useful on colima)
+# and leave monitoring/alerting toggles for ObserveStack integration later.
+#
+
+{{- $pr := $state.policyReporter }}
+{{- if $pr.enabled }}
+---
+apiVersion: helm.m.crossplane.io/v1beta1
+kind: Release
+metadata:
+  name: {{ $pr.releaseName }}
+  annotations:
+    {{ setResourceNameAnnotation "policy-reporter" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    chart:
+      name: policy-reporter
+      repository: https://kyverno.github.io/policy-reporter/
+      version: {{ $pr.chartVersion | quote }}
+    namespace: {{ $pr.namespace }}
+    wait: true
+    {{- if gt (len $pr.overrideAllValues) 0 }}
+    values:
+      {{- toYaml $pr.overrideAllValues | nindent 6 }}
+    {{- else }}
+    values:
+      ui:
+        enabled: true
+      {{- if gt (len $pr.values) 0 }}
+      {{- toYaml $pr.values | nindent 6 }}
+      {{- end }}
+    {{- end }}
+  rollbackLimit: 3
+  providerConfigRef:
+    name: {{ $state.helmProviderConfigRef.name }}
+    kind: {{ $state.helmProviderConfigRef.kind }}
+{{- end }}

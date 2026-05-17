@@ -1,0 +1,152 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: policystacks.hops.ops.com.ai
+spec:
+  group: hops.ops.com.ai
+  names:
+    kind: PolicyStack
+    plural: policystacks
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    referenceable: true
+    served: true
+    schema:
+      openAPIV3Schema:
+        description: PolicyStack installs Kyverno (policy engine) and Policy Reporter (PolicyReport dashboard + Prometheus exporter) on a target Kubernetes cluster as two Helm releases. Cloud-neutral. Engine-only in this iteration — baseline policy content (PSS, RBAC hygiene, generate, cleanup) ships in subsequent iterations. Other stacks (security, tenant) compose ClusterPolicy/CEL ValidatingPolicy resources against this engine.
+        type: object
+        properties:
+          spec:
+            description: PolicyStackSpec defines the desired state.
+            type: object
+            properties:
+              clusterName:
+                description: Name of the target cluster. Used as default for helmProviderConfigRef.name, kubernetesProviderConfigRef.name, and resource naming.
+                type: string
+              managementPolicies:
+                description: Management policies for all composed resources. Defaults to ["*"].
+                type: array
+                items:
+                  type: string
+                default:
+                - "*"
+              labels:
+                description: Custom labels applied to all managed resources. Merged with the stack defaults (hops.ops.com.ai/managed=true, hops.ops.com.ai/policystack=<name>).
+                type: object
+                additionalProperties:
+                  type: string
+                x-kubernetes-preserve-unknown-fields: true
+              helmProviderConfigRef:
+                description: Reference to the Helm ProviderConfig. Defaults to clusterName.
+                type: object
+                properties:
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                    - ProviderConfig
+                    - ClusterProviderConfig
+              kubernetesProviderConfigRef:
+                description: Reference to the Kubernetes ProviderConfig (used to compose the kyverno and policy-reporter namespaces). Defaults to clusterName.
+                type: object
+                properties:
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                    - ProviderConfig
+                    - ClusterProviderConfig
+              kyverno:
+                description: Kyverno engine configuration.
+                type: object
+                properties:
+                  enabled:
+                    description: Whether to install Kyverno. Defaults to true. Disable only for stacks composing Policy Reporter against an externally-managed Kyverno.
+                    type: boolean
+                    default: true
+                  namespace:
+                    description: Namespace for the Kyverno Helm release. Defaults to "kyverno".
+                    type: string
+                  releaseName:
+                    description: Helm release name. Defaults to "kyverno".
+                    type: string
+                  chartVersion:
+                    description: Kyverno Helm chart version. Default 3.8.0 (app v1.18.0). Per spec research, app version must be >= 1.17.2 for CVE pipeline (CVE-2026-22039, -41068, -41323) — 1.18.0 exceeds the floor.
+                    type: string
+                  values:
+                    description: Helm values merged on top of the stack's defaults (1 replica, failurePolicy=Ignore — colima-safe; override for HA prod clusters).
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  overrideAllValues:
+                    description: Helm values that replace all defaults entirely.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+              baseline:
+                description: Baseline policy bundle configuration. The bundle vendors `kyverno/policies/pod-security/baseline` (12 ClusterPolicy resources) and ships them in Audit mode by default. Per-policy action overrides allow operators to disable or pre-emptively Enforce individual policies after reviewing PolicyReports.
+                type: object
+                properties:
+                  pss:
+                    description: 'PSS bundle selector. `off` renders no policies (engine-only install). `baseline` renders the 12 Pod Security Standards baseline policies. (`privileged` and `restricted` reserved for future iterations.) Defaults to "baseline".'
+                    type: string
+                    enum:
+                    - "off"
+                    - baseline
+                    default: baseline
+                  exemptNamespaces:
+                    description: 'Platform namespaces to exempt from baseline policies. Appended to the hard-coded defaults (kube-system, kyverno, crossplane-system, istio-system, istio-ingress, argocd, cert-manager, external-secrets, external-dns, observe, cnpg, knative-serving, knative-operator, nats, policy-reporter, gateway-api). Add additional platform namespaces here when new stacks land. Tenant namespaces must NOT go here — that defeats the policy.'
+                    type: array
+                    items:
+                      type: string
+                  policies:
+                    description: 'Per-policy overrides keyed by camelCase policy name (e.g. `disallowPrivilegedContainers`). Each entry can set `action: off | Audit | Enforce` — defaults to Audit. Unknown keys are ignored.'
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+              policyReporter:
+                description: Policy Reporter dashboard configuration.
+                type: object
+                properties:
+                  enabled:
+                    description: Whether to install Policy Reporter. Defaults to true.
+                    type: boolean
+                    default: true
+                  namespace:
+                    description: Namespace for the Policy Reporter Helm release. Defaults to "policy-reporter".
+                    type: string
+                  releaseName:
+                    description: Helm release name. Defaults to "policy-reporter".
+                    type: string
+                  chartVersion:
+                    description: Policy Reporter Helm chart version.
+                    type: string
+                  values:
+                    description: Helm values merged on top of the stack's defaults.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  overrideAllValues:
+                    description: Helm values that replace all defaults entirely.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+            required:
+            - clusterName
+          status:
+            description: PolicyStackStatus defines the observed state.
+            type: object
+            properties:
+              ready:
+                description: Overall readiness — true when all enabled components are Ready.
+                type: boolean
+              kyverno:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+              policyReporter:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+        required:
+        - spec

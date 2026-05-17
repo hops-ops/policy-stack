@@ -1,0 +1,15 @@
+# code: language=yaml
+#
+# Output XR status
+#
+
+{{- $xr := getCompositeResource . }}
+---
+apiVersion: {{ $xr.apiVersion }}
+kind: {{ $xr.kind }}
+status:
+  ready: {{ $state.status.ready }}
+  kyverno:
+    ready: {{ $state.status.kyverno.ready }}
+  policyReporter:
+    ready: {{ $state.status.policyReporter.ready }}

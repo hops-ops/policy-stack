@@ -1,0 +1,7 @@
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: PolicyStack
+metadata:
+  name: policy
+  namespace: default
+spec:
+  clusterName: default

@@ -1,0 +1,62 @@
+# code: language=yaml
+#
+# Ensure namespaces exist for Kyverno + Policy Reporter releases.
+#
+# The Helm provider can implicitly create release namespaces, but composing
+# them as Object MRs gives us explicit ownership, labels propagation, and a
+# stable readiness signal we can gate on.
+#
+
+{{- $k8sPCR := $state.kubernetesProviderConfigRef }}
+
+# ==============================================================================
+# Namespace: kyverno
+# ==============================================================================
+{{- if $state.kyverno.enabled }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-namespace-kyverno
+  annotations:
+    {{ setResourceNameAnnotation "namespace-kyverno" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: {{ $state.kyverno.namespace }}
+        labels: {{ $state.labels | toJson }}
+  providerConfigRef:
+    name: {{ $k8sPCR.name }}
+    kind: {{ $k8sPCR.kind }}
+{{- end }}
+
+# ==============================================================================
+# Namespace: policy-reporter (only if distinct from kyverno's)
+# ==============================================================================
+{{- if and $state.policyReporter.enabled (or (not $state.kyverno.enabled) (ne $state.policyReporter.namespace $state.kyverno.namespace)) }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-namespace-policy-reporter
+  annotations:
+    {{ setResourceNameAnnotation "namespace-policy-reporter" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: {{ $state.policyReporter.namespace }}
+        labels: {{ $state.labels | toJson }}
+  providerConfigRef:
+    name: {{ $k8sPCR.name }}
+    kind: {{ $k8sPCR.kind }}
+{{- end }}

@@ -1,0 +1,98 @@
+# code: language=yaml
+#
+# Baseline PSS policy bundle (Audit-only first slice).
+#
+# Vendored from kyverno/policies/pod-security/baseline. Each ClusterPolicy is
+# composed as a provider-kubernetes Object MR so the lifecycle is owned by the
+# PolicyStack XR (delete the XR → policies are removed).
+#
+# Exemption clause is computed from $state.baseline.exemptNamespaces (hard-coded
+# platform list + operator-extensible). Per-policy action comes from
+# $state.baseline.policies.<key>.action (default Audit).
+#
+# This file currently emits ONE pilot policy. Adding the other 11 baseline PSS
+# policies is a straightforward copy-paste once the pattern is validated on
+# pat-local. See [[tasks/policy-stack-baseline-bundle]].
+#
+
+{{- $bl := $state.baseline }}
+{{- $k8sPCR := $state.kubernetesProviderConfigRef }}
+
+{{- if eq $bl.pss "off" }}
+  # baseline.pss=off — engine-only install, no policies rendered
+{{- else }}
+
+# ==============================================================================
+# disallow-privileged-containers (Pod Security Standards: Baseline)
+# Upstream: github.com/kyverno/policies/pod-security/baseline/disallow-privileged-containers
+# ==============================================================================
+{{- $dp := $bl.policies.disallowPrivilegedContainers }}
+{{- if ne $dp.action "off" }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-policy-disallow-privileged-containers
+  annotations:
+    {{ setResourceNameAnnotation "policy-disallow-privileged-containers" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        name: disallow-privileged-containers
+        labels:
+          {{- range $k, $v := $state.labels }}
+          {{ $k }}: {{ $v | quote }}
+          {{- end }}
+          hops.ops.com.ai/stack: policy
+          hops.ops.com.ai/policy-category: pod-security-baseline
+        annotations:
+          policies.kyverno.io/title: Disallow Privileged Containers
+          policies.kyverno.io/category: Pod Security Standards (Baseline)
+          policies.kyverno.io/severity: medium
+          policies.kyverno.io/subject: Pod
+          policies.kyverno.io/description: >-
+            Privileged mode disables most security mechanisms and must not be allowed.
+            This policy ensures Pods do not call for privileged mode.
+      spec:
+        validationFailureAction: {{ $dp.action }}
+        background: true
+        rules:
+          - name: privileged-containers
+            match:
+              any:
+                - resources:
+                    kinds:
+                      - Pod
+            exclude:
+              any:
+                - resources:
+                    namespaces: {{ $bl.exemptNamespaces | toJson }}
+            validate:
+              message: >-
+                Privileged mode is disallowed. The fields
+                spec.containers[*].securityContext.privileged,
+                spec.initContainers[*].securityContext.privileged, and
+                spec.ephemeralContainers[*].securityContext.privileged must be unset
+                or set to `false`.
+              pattern:
+                spec:
+                  =(ephemeralContainers):
+                    - =(securityContext):
+                        =(privileged): "false"
+                  =(initContainers):
+                    - =(securityContext):
+                        =(privileged): "false"
+                  containers:
+                    - =(securityContext):
+                        =(privileged): "false"
+  providerConfigRef:
+    name: {{ $k8sPCR.name }}
+    kind: {{ $k8sPCR.kind }}
+{{- end }}
+
+{{- end }}

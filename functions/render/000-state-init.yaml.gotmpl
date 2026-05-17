@@ -1,0 +1,139 @@
+# code: language=yaml
+#
+# Initialize $state with spec defaults
+#
+
+{{- $xr := getCompositeResource . }}
+{{- $spec := $xr.spec | default dict }}
+{{- $metadata := $xr.metadata | default dict }}
+
+# ==============================================================================
+# Core defaults
+# ==============================================================================
+{{- $name := $metadata.name | default "policy" }}
+{{- $clusterName := $spec.clusterName | default $name }}
+{{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
+
+# Labels — every composed resource carries hops.ops.com.ai/managed=true and a
+# kind-scoped marker. User-provided labels merge on top.
+{{- $kindKey := printf "hops.ops.com.ai/%s" (lower $xr.kind) }}
+{{- $defaultLabels := dict
+  "hops.ops.com.ai/managed" "true"
+  $kindKey $name
+}}
+{{- $labels := mergeOverwrite (dict) $defaultLabels ($spec.labels | default dict) }}
+
+# ==============================================================================
+# Provider config refs (both default to clusterName)
+# ==============================================================================
+{{- $helmPCR := $spec.helmProviderConfigRef | default dict }}
+{{- $helmPCR = dict
+  "name" ($helmPCR.name | default $clusterName)
+  "kind" ($helmPCR.kind | default "ProviderConfig")
+}}
+
+{{- $k8sPCR := $spec.kubernetesProviderConfigRef | default dict }}
+{{- $k8sPCR = dict
+  "name" ($k8sPCR.name | default $clusterName)
+  "kind" ($k8sPCR.kind | default "ProviderConfig")
+}}
+
+# ==============================================================================
+# Kyverno component
+# ==============================================================================
+{{- $ky := $spec.kyverno | default dict }}
+{{- $kyEnabled := true }}
+{{- if hasKey $ky "enabled" }}
+  {{- $kyEnabled = $ky.enabled }}
+{{- end }}
+{{- $kyNamespace := $ky.namespace | default "kyverno" }}
+{{- $kyReleaseName := $ky.releaseName | default "kyverno" }}
+{{- $kyChartVersion := $ky.chartVersion | default "3.8.0" }}
+
+# ==============================================================================
+# Policy Reporter component
+# ==============================================================================
+{{- $pr := $spec.policyReporter | default dict }}
+{{- $prEnabled := true }}
+{{- if hasKey $pr "enabled" }}
+  {{- $prEnabled = $pr.enabled }}
+{{- end }}
+{{- $prNamespace := $pr.namespace | default "policy-reporter" }}
+{{- $prReleaseName := $pr.releaseName | default "policy-reporter" }}
+{{- $prChartVersion := $pr.chartVersion | default "3.7.4" }}
+
+# ==============================================================================
+# Baseline policy bundle
+# ==============================================================================
+{{- $bl := $spec.baseline | default dict }}
+{{- $blPss := $bl.pss | default "baseline" }}
+
+# Hard-coded platform namespace exemptions. New stacks added here as they land.
+# Per [[tasks/policy-stack-colima-spike]] (closed): namespace list + PolicyException
+# CRs is the chosen exemption strategy. Label-based exemption was rejected — Helm
+# doesn't propagate metadata.labels to Pod templates.
+{{- $blDefaultExempt := list
+  "kube-system"
+  "kyverno"
+  "crossplane-system"
+  "istio-system"
+  "istio-ingress"
+  "argocd"
+  "cert-manager"
+  "external-secrets"
+  "external-dns"
+  "observe"
+  "monitoring"
+  "cnpg-system"
+  "knative-serving"
+  "knative-eventing"
+  "knative-operator"
+  "nats"
+  "policy-reporter"
+  "gateway-api"
+}}
+{{- $blUserExempt := $bl.exemptNamespaces | default (list) }}
+{{- $blExempt := concat $blDefaultExempt $blUserExempt }}
+
+# Per-policy action resolution. Default Audit for the first slice (deliberate —
+# operator promotes to Enforce per policy after reviewing PolicyReports).
+{{- $blPolicies := $bl.policies | default dict }}
+{{- $blDisallowPrivileged := get $blPolicies "disallowPrivilegedContainers" | default dict }}
+{{- $blDisallowPrivilegedAction := $blDisallowPrivileged.action | default "Audit" }}
+
+# ==============================================================================
+# Initialize $state
+# ==============================================================================
+{{- $state := dict
+  "name" $name
+  "clusterName" $clusterName
+  "managementPolicies" $managementPolicies
+  "labels" $labels
+  "helmProviderConfigRef" $helmPCR
+  "kubernetesProviderConfigRef" $k8sPCR
+  "kyverno" (dict
+    "enabled" $kyEnabled
+    "namespace" $kyNamespace
+    "releaseName" $kyReleaseName
+    "chartVersion" $kyChartVersion
+    "values" ($ky.values | default dict)
+    "overrideAllValues" ($ky.overrideAllValues | default dict)
+  )
+  "policyReporter" (dict
+    "enabled" $prEnabled
+    "namespace" $prNamespace
+    "releaseName" $prReleaseName
+    "chartVersion" $prChartVersion
+    "values" ($pr.values | default dict)
+    "overrideAllValues" ($pr.overrideAllValues | default dict)
+  )
+  "baseline" (dict
+    "pss" $blPss
+    "exemptNamespaces" $blExempt
+    "policies" (dict
+      "disallowPrivilegedContainers" (dict "action" $blDisallowPrivilegedAction)
+    )
+  )
+  "observed" (dict)
+  "status" (dict)
+}}

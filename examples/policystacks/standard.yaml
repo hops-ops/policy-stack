@@ -1,0 +1,21 @@
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: PolicyStack
+metadata:
+  name: policy
+  namespace: pat-local
+spec:
+  clusterName: pat-local
+  labels:
+    team: platform
+    environment: dev
+  kyverno:
+    namespace: kyverno
+    values:
+      admissionController:
+        replicas: 1
+        failurePolicy: Ignore
+  policyReporter:
+    namespace: policy-reporter
+    values:
+      ui:
+        enabled: true
