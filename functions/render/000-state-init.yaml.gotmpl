@@ -91,6 +91,8 @@
   "nats"
   "policy-reporter"
   "gateway-api"
+  "falco"
+  "trivy-system"
 }}
 {{- $blUserExempt := $bl.exemptNamespaces | default (list) }}
 {{- $blExempt := concat $blDefaultExempt $blUserExempt }}

@@ -337,6 +337,8 @@ _items = [
                                         "nats"
                                         "policy-reporter"
                                         "gateway-api"
+                                        "falco"
+                                        "trivy-system"
                                         "my-platform-ns"
                                         "another-ns"
                                     ]
