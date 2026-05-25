@@ -37,6 +37,12 @@ _items = [
                             version = "3.8.0"
                         }
                         namespace = "kyverno"
+                        values = {
+                            admissionController.container.resources.requests = {cpu = "296m", memory = "105Mi"}
+                            backgroundController.resources.requests = {cpu = "15m", memory = "100Mi"}
+                            cleanupController.resources.requests = {cpu = "15m", memory = "100Mi"}
+                            reportsController.resources.requests = {cpu = "15m", memory = "100Mi"}
+                        }
                     }
                 }
                 {
@@ -50,6 +56,10 @@ _items = [
                             version = "3.7.4"
                         }
                         namespace = "policy-reporter"
+                        values = {
+                            resources.requests = {cpu = "15m", memory = "100Mi"}
+                            ui.resources.requests = {cpu = "15m", memory = "100Mi"}
+                        }
                     }
                 }
                 {

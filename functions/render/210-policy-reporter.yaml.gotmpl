@@ -11,6 +11,20 @@
 
 {{- $pr := $state.policyReporter }}
 {{- if $pr.enabled }}
+{{- $chartDefaults := dict
+  "resources" (dict
+    "requests" (dict "cpu" "15m" "memory" "100Mi")
+    "limits" (dict "cpu" "100m" "memory" "256Mi")
+  )
+  "ui" (dict
+    "enabled" true
+    "resources" (dict
+      "requests" (dict "cpu" "15m" "memory" "100Mi")
+      "limits" (dict "cpu" "100m" "memory" "256Mi")
+    )
+  )
+}}
+{{- $mergedValues := mergeOverwrite $chartDefaults ($pr.values | default dict) }}
 ---
 apiVersion: helm.m.crossplane.io/v1beta1
 kind: Release
@@ -33,11 +47,7 @@ spec:
       {{- toYaml $pr.overrideAllValues | nindent 6 }}
     {{- else }}
     values:
-      ui:
-        enabled: true
-      {{- if gt (len $pr.values) 0 }}
-      {{- toYaml $pr.values | nindent 6 }}
-      {{- end }}
+      {{- toYaml $mergedValues | nindent 6 }}
     {{- end }}
   rollbackLimit: 3
   providerConfigRef:
