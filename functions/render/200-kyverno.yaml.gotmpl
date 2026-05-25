@@ -15,6 +15,38 @@
 
 {{- $ky := $state.kyverno }}
 {{- if $ky.enabled }}
+{{- $chartDefaults := dict
+  "admissionController" (dict
+    "replicas" 1
+    "failurePolicy" "Ignore"
+    "container" (dict "resources" (dict
+      "requests" (dict "cpu" "296m" "memory" "105Mi")
+      "limits" (dict "cpu" "1000m" "memory" "512Mi")
+    ))
+  )
+  "backgroundController" (dict
+    "replicas" 1
+    "resources" (dict
+      "requests" (dict "cpu" "15m" "memory" "100Mi")
+      "limits" (dict "cpu" "100m" "memory" "256Mi")
+    )
+  )
+  "reportsController" (dict
+    "replicas" 1
+    "resources" (dict
+      "requests" (dict "cpu" "15m" "memory" "100Mi")
+      "limits" (dict "cpu" "100m" "memory" "256Mi")
+    )
+  )
+  "cleanupController" (dict
+    "replicas" 1
+    "resources" (dict
+      "requests" (dict "cpu" "15m" "memory" "100Mi")
+      "limits" (dict "cpu" "100m" "memory" "256Mi")
+    )
+  )
+}}
+{{- $mergedValues := mergeOverwrite $chartDefaults ($ky.values | default dict) }}
 ---
 apiVersion: helm.m.crossplane.io/v1beta1
 kind: Release
@@ -37,20 +69,7 @@ spec:
       {{- toYaml $ky.overrideAllValues | nindent 6 }}
     {{- else }}
     values:
-      admissionController:
-        replicas: 1
-        # Colima-safe default. Production HA: 3 replicas + failurePolicy=Fail
-        # for security policies via a separate webhook config (deferred).
-        failurePolicy: Ignore
-      backgroundController:
-        replicas: 1
-      reportsController:
-        replicas: 1
-      cleanupController:
-        replicas: 1
-      {{- if gt (len $ky.values) 0 }}
-      {{- toYaml $ky.values | nindent 6 }}
-      {{- end }}
+      {{- toYaml $mergedValues | nindent 6 }}
     {{- end }}
   rollbackLimit: 3
   providerConfigRef:
