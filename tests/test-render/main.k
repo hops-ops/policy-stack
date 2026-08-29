@@ -35,7 +35,7 @@ _items = [
                             name = "kyverno"
                             repository = "https://kyverno.github.io/kyverno/"
                             # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno/
-                            version = "3.8.0"
+                            version = "3.9.0"
                         }
                         namespace = "kyverno"
                         values = {
