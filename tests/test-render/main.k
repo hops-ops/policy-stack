@@ -34,6 +34,7 @@ _items = [
                         chart = {
                             name = "kyverno"
                             repository = "https://kyverno.github.io/kyverno/"
+                            # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno/
                             version = "3.8.0"
                         }
                         namespace = "kyverno"
@@ -53,6 +54,7 @@ _items = [
                         chart = {
                             name = "policy-reporter"
                             repository = "https://kyverno.github.io/policy-reporter/"
+                            # renovate: datasource=helm depName=policy-reporter registryUrl=https://kyverno.github.io/policy-reporter/
                             version = "3.7.4"
                         }
                         namespace = "policy-reporter"
