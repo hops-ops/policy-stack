@@ -49,7 +49,7 @@
 {{- $kyNamespace := $ky.namespace | default "kyverno" }}
 {{- $kyReleaseName := $ky.releaseName | default "kyverno" }}
 # renovate: datasource=helm depName=kyverno registryUrl=https://kyverno.github.io/kyverno/
-{{- $kyChartVersion := $ky.chartVersion | default "3.8.0" }}
+{{- $kyChartVersion := $ky.chartVersion | default "3.9.1" }}
 
 # ==============================================================================
 # Policy Reporter component
@@ -62,7 +62,7 @@
 {{- $prNamespace := $pr.namespace | default "policy-reporter" }}
 {{- $prReleaseName := $pr.releaseName | default "policy-reporter" }}
 # renovate: datasource=helm depName=policy-reporter registryUrl=https://kyverno.github.io/policy-reporter/
-{{- $prChartVersion := $pr.chartVersion | default "3.7.4" }}
+{{- $prChartVersion := $pr.chartVersion | default "3.10.0" }}
 
 # ==============================================================================
 # Baseline policy bundle
