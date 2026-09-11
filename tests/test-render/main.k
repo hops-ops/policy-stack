@@ -55,7 +55,7 @@ _items = [
                             name = "policy-reporter"
                             repository = "https://kyverno.github.io/policy-reporter/"
                             # renovate: datasource=helm depName=policy-reporter registryUrl=https://kyverno.github.io/policy-reporter/
-                            version = "3.7.4"
+                            version = "3.10.0"
                         }
                         namespace = "policy-reporter"
                         values = {
